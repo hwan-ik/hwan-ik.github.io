@@ -225,7 +225,7 @@ html.lite .gate { transition: opacity .9s var(--ease); }
 /* ——— footer ——— */
 .foot {
   border-top: 1px solid var(--rule);
-  padding: 12vh var(--gutter-r) calc(env(safe-area-inset-bottom, 0px) + 28px) var(--gutter-l);
+  padding: 12vh var(--gutter-r) calc(env(safe-area-inset-bottom, 0px) + 84px) var(--gutter-l);
   display: grid; gap: 48px;
 }
 .foot h2 {
@@ -240,6 +240,10 @@ html.lite .gate { transition: opacity .9s var(--ease); }
 .foot .ig { display: inline-flex; align-items: center; gap: 8px; color: var(--paper); text-decoration: none; }
 .foot .ig svg.i { width: 15px; height: 15px; }
 .foot .ig:hover { color: #d1d5db; }
+.foot .top { display: inline-flex; align-items: center; gap: 6px; color: var(--dim); text-decoration: none; transition: color .2s; }
+.foot .top svg.i { width: 14px; height: 14px; transition: transform .3s var(--ease); }
+.foot .top:hover { color: var(--paper); }
+.foot .top:hover svg.i { transform: translateY(-2px); }
 .foot .small { font-family: var(--mono); padding-inline: 8px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; color: var(--dim); text-transform: uppercase; letter-spacing: .14em; font-size: 11px; }
 
 /* ——— entrance: one tap to come in, which is also the browser's permission to play sound ——— */
@@ -364,7 +368,7 @@ html.gated .hero .animate-blur-fade-up { animation-play-state: paused; }
 
 <footer class="foot" id="contact">
   <h2 id="footLine">Let's make <span>pictures</span><canvas aria-hidden="true"></canvas></h2>
-  <div class="small"><span>© <span id="year"></span> <span data-site-name></span></span><a class="ig" href="https://www.instagram.com/hwan.photos/" target="_blank" rel="noopener"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="20" x="2" y="2" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>@hwan.photos</a></div>
+  <div class="small"><span>© <span id="year"></span> <span data-site-name></span></span><a class="top" id="toTop" href="#top"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg>Back to top</a><a class="ig" href="https://www.instagram.com/hwan.photos/" target="_blank" rel="noopener"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="20" x="2" y="2" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>@hwan.photos</a></div>
 </footer>
 
 <div class="cursor" id="cursor" aria-hidden="true">View</div>
@@ -403,6 +407,7 @@ html.gated .hero .animate-blur-fade-up { animation-play-state: paused; }
   const lite = matchMedia("(pointer: coarse)").matches || innerWidth < 820 || (navigator.deviceMemory || 8) <= 4;
   document.documentElement.classList.toggle("lite", lite);
   $("#year").textContent = new Date().getFullYear();
+  $("#toTop").addEventListener("click", (e) => { e.preventDefault(); scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" }); });
 
   // the site's name lives here (and in <title>)
   const SITE_NAME = "Hwan";
