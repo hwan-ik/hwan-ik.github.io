@@ -1,0 +1,1010 @@
+<meta charset="utf-8">
+<title>Hwan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Hwan: photographs of Japan.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a full-screen cinematic opening (living photo, bottom blur, glass controls), then the work grouped by category, every photo shown whole at its own proportions and drawn through WebGL so it bends as you scroll, and a lightbox. Single black look on purpose: photos read best on black. */
+:root {
+  --ground: #000;
+  --ground-2: #111;
+  --paper: #fff;
+  --dim: #9ca3af;
+  --rule: #1f2937;
+  --leader: #d1d5db;
+  --display: "Inter", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --gutter-l: max(16px, env(safe-area-inset-left, 0px));
+  --gutter-r: max(16px, env(safe-area-inset-right, 0px));
+  --ease: cubic-bezier(.2,.7,.1,1);
+  color-scheme: dark;
+}
+html { background: var(--ground); }
+body { margin: 0; background: var(--ground); color: var(--paper); font-family: var(--display); font-size: 14px; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+.mono { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
+a { color: inherit; }
+::selection { background: var(--leader); color: var(--ground); }
+:focus-visible { outline: 1px solid var(--leader); outline-offset: 3px; }
+
+/* ——— liquid glass ——— */
+.liquid-glass {
+  background: rgba(255, 255, 255, .01); background-blend-mode: luminosity;
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  border: none; box-shadow: inset 0 1px 1px rgba(255, 255, 255, .1);
+  position: relative; overflow: hidden; color: #fff;
+}
+.liquid-glass::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.4px; pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,.45) 0%, rgba(255,255,255,.15) 20%, rgba(255,255,255,0) 40%, rgba(255,255,255,0) 60%, rgba(255,255,255,.15) 80%, rgba(255,255,255,.45) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+
+/* ——— blur-fade-up entrance ——— */
+@keyframes blurFadeUp {
+  from { opacity: 0; filter: blur(20px); transform: translateY(40px); }
+  to { opacity: 1; filter: blur(0); transform: translateY(0); }
+}
+.animate-blur-fade-up { opacity: 0; animation: blurFadeUp 1s ease-out forwards; }
+
+/* ——— cinematic hero ——— */
+.hero { position: relative; height: 100vh; height: 100svh; min-height: 560px; overflow: hidden; display: flex; flex-direction: column; background: #000; }
+.hero-bg { position: absolute; inset: 0; z-index: 0; }
+.hero-bg img {
+  position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; object-fit: cover; object-position: 50% 40%;
+  opacity: 0; filter: blur(16px); transform: scale(1.06);
+  transition: opacity 1.4s ease-out, filter 1.4s ease-out;
+}
+.hero-bg img.on { opacity: 1; filter: blur(0); animation: drift 22s ease-out forwards; }
+@keyframes drift { from { transform: scale(1.06); } to { transform: scale(1.16); } }
+.hero-gl { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; opacity: 0; transition: opacity 1.2s ease-out; pointer-events: none; }
+.hero-gl.on { opacity: 1; }
+.hero-blur {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
+  -webkit-mask-image: linear-gradient(to top, black 0%, transparent 45%); mask-image: linear-gradient(to top, black 0%, transparent 45%);
+}
+
+.nav {
+  position: relative; z-index: 50; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 16px;
+  padding: calc(env(safe-area-inset-top, 0px) + 16px) max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px));
+}
+.logo { display: flex; align-items: center; height: 32px; font-size: 18px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; text-decoration: none; white-space: nowrap; }
+.nav-links { display: none; gap: 36px; }
+.nav-links a { font-size: 14px; text-decoration: none; transition: color .2s; }
+.nav-links a:hover { color: #d1d5db; }
+.nav-side { display: flex; align-items: center; gap: 12px; }
+.nav-side.end { justify-content: flex-end; }
+.pill, .circle { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 999px; font: inherit; font-size: 14px; cursor: pointer; text-decoration: none; }
+.pill { padding: 8px 16px; }
+.circle { width: 40px; height: 40px; padding: 0; }
+.menu-btn .ico { position: absolute; transition: transform .5s ease-out, opacity .5s ease-out; }
+.menu-btn .ico-x { transform: rotate(-180deg) scale(.5); opacity: 0; }
+.menu-btn[aria-expanded="true"] .ico-menu { transform: rotate(180deg) scale(.5); opacity: 0; }
+.menu-btn[aria-expanded="true"] .ico-x { transform: none; opacity: 1; }
+svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+.mobile-menu {
+  position: absolute; left: 0; right: 0; top: calc(env(safe-area-inset-top, 0px) + 72px); z-index: 40;
+  background: rgb(17 24 39 / .95); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  border-block: 1px solid #1f2937; box-shadow: 0 25px 50px -12px rgb(0 0 0 / .25);
+  padding: 12px max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px));
+  transition: transform .5s ease-out, opacity .5s ease-out;
+  transform: translateY(-16px); opacity: 0; pointer-events: none;
+}
+.mobile-menu.open { transform: none; opacity: 1; pointer-events: auto; }
+.mobile-menu a.m-link { display: block; padding: 12px; border-radius: 8px; font-size: 16px; text-decoration: none; transition: background .2s, transform .5s ease-out, opacity .5s ease-out; transform: translateX(-16px); opacity: 0; }
+.mobile-menu.open a.m-link { transform: none; opacity: 1; }
+.mobile-menu a.m-link:hover { background: rgb(31 41 55 / .5); }
+.mobile-menu .m-actions { display: flex; gap: 12px; margin-top: 12px; padding-top: 16px; border-top: 1px solid #1f2937; }
+
+.hero-content { position: absolute; inset: 0; z-index: 10; pointer-events: none; text-align: center; }
+.hero-content a, .hero-content button { pointer-events: auto; }
+.mirror { position: absolute; left: 0; right: 0; top: var(--wl, 60%); height: 0; padding-inline: 16px; }
+.mirror .hero-title { position: absolute; left: 16px; right: 16px; bottom: 0; margin: 0; padding-bottom: .04em; }
+.reflect { position: absolute; left: 16px; right: 16px; top: 0; }
+.reflect .hero-title {
+  position: static; transform: scaleY(-1); transform-origin: 50% 0; translate: 0 100%; opacity: .26; filter: url(#ripple) blur(.6px);
+  -webkit-mask-image: linear-gradient(to top, #000 0%, transparent 75%); mask-image: linear-gradient(to top, #000 0%, transparent 75%);
+}
+.mirror.dry .reflect { display: none; }
+/* every few seconds a wave runs through the headline, and its reflection answers */
+.hero-title .w { display: inline-block; white-space: nowrap; }
+.hero-title .ch { display: inline-block; will-change: transform, filter, opacity; }
+.mirror.swell .ch { animation: swell 1.5s cubic-bezier(.4, 0, .2, 1) both; animation-delay: calc(var(--i) * 32ms); }
+.mirror.drift .ch { animation: drift 1.9s ease-in-out both; animation-delay: calc(var(--i) * 26ms); }
+@keyframes swell {
+  0%, 100% { transform: none; text-shadow: none; }
+  38% { transform: translateY(-.16em); text-shadow: 0 0 22px rgb(255 255 255 / .55); }
+}
+@keyframes drift {
+  0%, 100% { opacity: 1; filter: none; transform: none; }
+  45% { opacity: .15; filter: blur(8px); transform: translateY(.08em) scale(.96); }
+}
+@media (prefers-reduced-motion: reduce) { .mirror .ch { animation: none !important; } }
+.hero-foot { position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; padding: 0 16px calc(env(safe-area-inset-bottom, 0px) + 28px); }
+.meta-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 28px; font-size: 12px; color: #d1d5db; }
+.meta-row span { display: inline-flex; align-items: center; gap: 6px; transition: opacity .5s ease-out; }
+.meta-row svg.i { width: 16px; height: 16px; }
+.meta-row b { font-weight: 500; }
+.hero-title { margin: 0; font-size: 30px; line-height: 1.05; font-weight: 400; letter-spacing: -.04em; text-wrap: balance; }
+.hero-desc { margin: 0 auto 24px; font-size: 16px; line-height: 1.5; color: #d1d5db; max-width: 42rem; text-shadow: 0 1px 12px rgb(0 0 0 / .25); text-wrap: pretty; }
+.ctas { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+.cta { padding: 10px 24px; font-weight: 500; }
+.cta-solid { background: #fff; color: #000; border: 0; transition: background .2s; }
+.cta-solid:hover { background: #e5e7eb; }
+.cta-solid svg.i { fill: #000; stroke: #000; }
+
+@media (min-width: 640px) {
+  .nav { padding-inline: max(24px, env(safe-area-inset-left, 0px)) max(24px, env(safe-area-inset-right, 0px)); }
+  .mobile-menu .m-actions { display: none; }
+  .meta-row { gap: 24px; font-size: 14px; }
+  .meta-row svg.i { width: 20px; height: 20px; }
+  .hero-title { font-size: 48px; }
+  .hero-desc { font-size: 18px; }
+  .ctas { gap: 16px; }
+  .cta { padding: 12px 32px; }
+}
+@media (min-width: 768px) {
+  .nav { padding: calc(env(safe-area-inset-top, 0px) + 24px) max(48px, env(safe-area-inset-right, 0px)) 24px max(48px, env(safe-area-inset-left, 0px)); }
+  .logo { height: 40px; font-size: 20px; }
+  .pill { padding: 8px 24px; }
+  .hero-foot { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 40px); }
+  .hero-title { font-size: 60px; }
+  .hero-desc { font-size: 20px; margin-bottom: 32px; }
+}
+@media (min-width: 1024px) {
+  .nav-links { display: flex; }
+  .nav-side .nav-links:first-child { margin-left: 0; }
+  .menu-btn, .mobile-menu, .nav-side .grid-btn { display: none; }
+  .hero-title { font-size: 72px; }
+}
+
+/* ——— work: categories ——— */
+.work { padding: 14vh var(--gutter-r) 10vh var(--gutter-l); overflow-x: clip; }
+.work-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 24px; padding-inline: 8px; margin-bottom: 28px; }
+.work-head h2 { margin: 0; font-weight: 300; font-size: clamp(40px, 7vw, 112px); line-height: .95; letter-spacing: -.045em; }
+.work-head h2 b { font-weight: 500; }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; padding-inline: 8px; margin-bottom: 40px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); z-index: 20; }
+.tab { padding: 9px 18px; font-size: 14px; color: #d1d5db; background-color: rgb(0 0 0 / .35); }
+.tab sup { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; color: var(--dim); margin-left: 4px; vertical-align: super; }
+.tab[aria-pressed="true"] { background: #fff; color: #000; }
+.tab[aria-pressed="true"] sup { color: #4b5563; }
+.tab[aria-pressed="true"]::before { display: none; }
+
+.cat { margin-bottom: 12vh; }
+.cat-head { position: relative; z-index: 6; display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 0 8px 18px; border-bottom: 1px solid var(--rule); margin-bottom: 16px; }
+.cat-head h3 { margin: 0; font-weight: 400; font-size: clamp(26px, 3.4vw, 44px); letter-spacing: -.035em; }
+.cat-head span { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; color: var(--dim); font-variant-numeric: tabular-nums; }
+
+.reel { display: flex; flex-direction: column; align-items: center; gap: clamp(72px, 16vh, 180px); padding-top: 6vh; }
+.item { margin: 0; width: min(100%, calc(84svh * var(--r)), 1440px); display: grid; gap: 14px; }
+/* panoramas run the full width of the screen, edge to edge */
+.item.wide { width: 100vw; max-width: none; }
+.item.wide .note { padding-inline: var(--gutter-l) var(--gutter-r); }
+.frame {
+  position: relative; margin: 0; padding: 0; border: 0; background: var(--tone, var(--ground-2));
+  aspect-ratio: var(--r); width: 100%; max-width: 100%; cursor: zoom-in; overflow: hidden; display: block;
+}
+.frame img { display: block; width: 100%; height: 100%; opacity: 0; transition: opacity .9s var(--ease); }
+.frame img.loaded { opacity: 1; }
+.work.gl .frame { background: transparent; }
+.work.gl .frame img { visibility: hidden; }
+.item figcaption:not(.note) {
+  display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  font-family: var(--mono); text-transform: uppercase; letter-spacing: .12em; font-size: 10px; color: var(--dim); font-variant-numeric: tabular-nums;
+}
+.item figcaption:not(.note) b { color: var(--paper); font-weight: 500; }
+.note { position: relative; z-index: 6; display: grid; grid-template-columns: auto 1fr; column-gap: 18px; row-gap: 8px; padding: 6px 8px 0; max-width: 64ch; }
+.note .n { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; color: var(--dim); padding-top: .55em; font-variant-numeric: tabular-nums; }
+.note h4 { margin: 0; font-weight: 400; font-size: clamp(20px, 2vw, 26px); letter-spacing: -.025em; line-height: 1.15; }
+.note p { grid-column: 2; margin: 0; color: #d1d5db; font-size: 15px; line-height: 1.6; text-wrap: pretty; }
+.note .ex { grid-column: 2; font-family: var(--mono); text-transform: uppercase; letter-spacing: .12em; font-size: 10px; color: var(--dim); }
+.lb-note { padding: 4px 8px 6px; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 18px; row-gap: 4px; }
+.lb-note h4 { margin: 0; font-weight: 400; font-size: 20px; letter-spacing: -.02em; }
+.lb-note p { margin: 0; color: #d1d5db; font-size: 14px; line-height: 1.5; max-width: 70ch; }
+.warp { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
+@media (max-width: 640px) {
+  .tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: -8px; padding: 2px 16px; margin-bottom: 28px; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { flex: none; }
+}
+
+/* ——— footer ——— */
+.foot {
+  border-top: 1px solid var(--rule);
+  padding: 12vh var(--gutter-r) calc(env(safe-area-inset-bottom, 0px) + 28px) var(--gutter-l);
+  display: grid; gap: 48px;
+}
+.foot h2 {
+  margin: 0; padding-inline: 8px; font-family: var(--display); font-weight: 400;
+  font-size: clamp(44px, 10vw, 168px); line-height: .95; letter-spacing: -.045em; text-wrap: balance;
+}
+.foot h2 span { font-weight: 300; color: var(--dim); }
+/* the closing line: run the cursor through it and the letters fill with pixelated photographs */
+.foot h2 { position: relative; }
+.foot h2 canvas { position: absolute; left: 0; top: 0; pointer-events: none; }
+.foot h2.painted, .foot h2.painted span { color: transparent; }
+.foot .ig { display: inline-flex; align-items: center; gap: 8px; color: var(--paper); text-decoration: none; }
+.foot .ig svg.i { width: 15px; height: 15px; }
+.foot .ig:hover { color: #d1d5db; }
+.foot .small { font-family: var(--mono); padding-inline: 8px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; color: var(--dim); text-transform: uppercase; letter-spacing: .14em; font-size: 11px; }
+
+/* ——— entrance: one tap to come in, which is also the browser's permission to play sound ——— */
+.gate { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; background: rgb(0 0 0 / .38);
+  -webkit-backdrop-filter: blur(18px) saturate(1.1); backdrop-filter: blur(18px) saturate(1.1); transition: opacity .9s var(--ease), backdrop-filter .9s var(--ease); }
+.gate[hidden] { display: none; }
+.gate.out { opacity: 0; pointer-events: none; }
+.gate-in { display: grid; justify-items: center; gap: 22px; text-align: center; padding: 24px; animation: blurFadeUp 1s ease-out both; }
+.gate-name { font-size: 15px; font-weight: 600; letter-spacing: .32em; text-transform: uppercase; margin-bottom: 10px; }
+.gate-go { padding: 12px 28px; font-size: 15px; font-weight: 500; }
+.gate-quiet { background: none; border: 0; color: #d1d5db; font: inherit; font-size: 13px; cursor: pointer; text-decoration: underline; text-underline-offset: 4px; text-decoration-color: rgb(255 255 255 / .3); }
+.gate-quiet:hover { color: #fff; }
+html.gated .hero .animate-blur-fade-up { animation-play-state: paused; }
+
+/* ——— music toggle: four bars that dance while it plays, lie flat when it doesn't ——— */
+.sound { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); z-index: 45; width: 44px; height: 44px; color: var(--paper); border: 0; }
+.sound .bars { display: flex; align-items: flex-end; gap: 3px; height: 14px; }
+.sound i { display: block; width: 2px; height: 3px; background: currentColor; border-radius: 1px; transition: height .4s var(--ease); }
+.sound[aria-pressed="true"] i { animation: eq 1.1s ease-in-out infinite alternate; }
+.sound[aria-pressed="true"] i:nth-child(2) { animation-delay: -.4s; } .sound[aria-pressed="true"] i:nth-child(3) { animation-delay: -.8s; } .sound[aria-pressed="true"] i:nth-child(4) { animation-delay: -.2s; }
+@keyframes eq { 0% { height: 3px; } 50% { height: 14px; } 100% { height: 6px; } }
+@media (prefers-reduced-motion: reduce) { .sound[aria-pressed="true"] i { animation: none; height: 10px; } }
+
+/* ——— cursor ——— */
+.cursor { font-family: var(--mono);
+  position: fixed; left: 0; top: 0; z-index: 40; pointer-events: none;
+  width: 74px; height: 74px; margin: -37px 0 0 -37px; border-radius: 50%;
+  display: grid; place-items: center; background: var(--paper); color: var(--ground);
+  text-transform: uppercase; letter-spacing: .14em; font-size: 10px; font-weight: 500;
+  transform: translate3d(var(--cx, -200px), var(--cy, -200px), 0) scale(var(--cs, 0));
+  transition: transform .35s var(--ease);
+}
+@media (hover: none), (pointer: coarse) { .cursor { display: none; } }
+
+/* ——— lightbox ——— */
+.lb {
+  position: fixed; inset: 0; z-index: 50; background: var(--ground);
+  display: grid; grid-template-rows: auto 1fr auto auto auto;
+  padding: calc(env(safe-area-inset-top, 0px) + 14px) var(--gutter-r) calc(env(safe-area-inset-bottom, 0px) + 14px) var(--gutter-l);
+  opacity: 0; visibility: hidden; transition: opacity .45s var(--ease), visibility 0s .45s;
+}
+.lb.open { opacity: 1; visibility: visible; transition: opacity .45s var(--ease); }
+.lb-top, .lb-meta { font-family: var(--mono); display: flex; justify-content: space-between; align-items: center; gap: 16px; padding-inline: 8px; text-transform: uppercase; letter-spacing: .14em; font-size: 11px; }
+.lb-top .count { font-variant-numeric: tabular-nums; }
+.lb button { background: none; border: 0; color: var(--paper); font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; padding: 8px; }
+.lb button:hover { color: var(--leader); }
+.lb-stage { position: relative; min-height: 0; touch-action: pan-y; }
+.lb-stage img {
+  position: absolute; inset: 12px 0; width: 100%; height: calc(100% - 24px); max-width: 100%; object-fit: contain;
+  transition: opacity .5s var(--ease), transform .7s var(--ease);
+}
+.lb-stage img.out { opacity: 0; transform: scale(.985); }
+.lb-stage .prev, .lb-stage .next { position: absolute; top: 0; bottom: 0; width: 30%; padding: 0; }
+.lb-stage .prev { left: 0; cursor: w-resize; } .lb-stage .next { right: 0; cursor: e-resize; }
+.lb-meta { color: var(--dim); flex-wrap: wrap; justify-content: flex-start; column-gap: 22px; row-gap: 4px; min-height: 30px; font-variant-numeric: tabular-nums; }
+.lb-meta b { color: var(--paper); font-weight: 500; }
+.strip { display: flex; gap: 4px; overflow-x: auto; padding: 10px 8px 0; scrollbar-width: none; }
+.strip::-webkit-scrollbar { display: none; }
+.strip button { flex: none; padding: 0; height: 48px; opacity: .35; transition: opacity .3s; }
+.strip button.cur, .strip button:hover { opacity: 1; }
+.strip img { height: 100%; width: auto; display: block; }
+
+.empty { padding: 30vh 8px; text-align: center; color: var(--dim); text-transform: uppercase; letter-spacing: .14em; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition-duration: .01ms !important; }
+}
+</style>
+
+<main id="top">
+  <section class="hero" aria-label="Featured photographs">
+    <div class="hero-bg" id="heroBg"></div>
+    <canvas class="hero-gl" id="heroGl" aria-hidden="true"></canvas>
+    <div class="hero-blur"></div>
+
+    <nav class="nav" aria-label="Main">
+      <div class="nav-side">
+        <a class="circle liquid-glass grid-btn animate-blur-fade-up" href="#work" aria-label="All photographs" style="animation-delay:100ms"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg></a>
+        <div class="nav-links"><a class="animate-blur-fade-up" href="#work" style="animation-delay:150ms">Work</a></div>
+      </div>
+      <a class="logo animate-blur-fade-up" href="#top" data-site-name style="animation-delay:0ms"></a>
+      <div class="nav-side end">
+        <div class="nav-links"><a class="animate-blur-fade-up" href="https://www.instagram.com/hwan.photos/" target="_blank" rel="noopener" style="animation-delay:150ms">Contact</a></div>
+        <button class="circle liquid-glass menu-btn animate-blur-fade-up" id="menuBtn" type="button" aria-label="Menu" aria-expanded="false" aria-controls="mobileMenu" style="animation-delay:100ms">
+          <span class="ico ico-menu"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg></span><span class="ico ico-x"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></span>
+        </button>
+      </div>
+    </nav>
+    <div class="mobile-menu" id="mobileMenu">
+      <a class="m-link" href="#work" style="transition-delay:0ms">Work</a>
+      <a class="m-link" href="https://www.instagram.com/hwan.photos/" target="_blank" rel="noopener" style="transition-delay:50ms">Contact</a>
+      <div class="m-actions">
+        <a class="pill liquid-glass" href="https://www.instagram.com/hwan.photos/" target="_blank" rel="noopener"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>Get in touch</a>
+        <a class="circle liquid-glass" href="#work" aria-label="All photographs"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg></a>
+      </div>
+    </div>
+
+    <div class="hero-content">
+      <div class="mirror" id="mirror">
+        <h1 class="hero-title animate-blur-fade-up" style="animation-delay:400ms">Every frame, a thousand words.</h1>
+        <div class="reflect animate-blur-fade-up" aria-hidden="true" style="animation-delay:550ms"><div class="hero-title">Every frame, a thousand words.</div></div>
+      </div>
+      <div class="hero-foot">
+        <p class="hero-desc animate-blur-fade-up" style="animation-delay:600ms">Small moments, kept.</p>
+        <div class="ctas">
+          <a class="cta pill cta-solid animate-blur-fade-up" href="#work" style="animation-delay:700ms"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg>View work</a>
+          <a class="cta pill liquid-glass animate-blur-fade-up" href="https://www.instagram.com/hwan.photos/" target="_blank" rel="noopener" style="animation-delay:780ms">Get in touch</a>
+        </div>
+      </div>
+      <svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="ripple" x="-5%" y="-20%" width="110%" height="140%"><feTurbulence type="fractalNoise" baseFrequency="0.006 0.11" numOctaves="1" seed="3"><animate attributeName="baseFrequency" dur="9s" values="0.006 0.11;0.007 0.13;0.006 0.11" repeatCount="indefinite"/></feTurbulence><feDisplacementMap in="SourceGraphic" scale="9" xChannelSelector="R" yChannelSelector="G"/></filter></svg>
+    </div>
+  </section>
+
+  <section class="work" id="work">
+    <div class="work-head">
+      <h2>Selected <b>work</b></h2>
+    </div>
+    <div id="cats"></div>
+    <canvas class="warp" id="warp" aria-hidden="true"></canvas>
+  </section>
+</main>
+
+<footer class="foot" id="contact">
+  <h2 id="footLine">Let's make <span>pictures</span><canvas aria-hidden="true"></canvas></h2>
+  <div class="small"><span>© <span id="year"></span> <span data-site-name></span></span><a class="ig" href="https://www.instagram.com/hwan.photos/" target="_blank" rel="noopener"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="20" x="2" y="2" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>@hwan.photos</a></div>
+</footer>
+
+<div class="cursor" id="cursor" aria-hidden="true">View</div>
+
+<div class="gate" id="gate" role="dialog" aria-modal="true" aria-label="Enter Hwan" hidden>
+  <div class="gate-in">
+    <span class="gate-name" data-site-name></span>
+    <button class="pill liquid-glass gate-go" id="gateSound" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>Enter with sound</button>
+    <button class="gate-quiet" id="gateQuiet" type="button">or enter in silence</button>
+  </div>
+</div>
+
+<button class="sound circle liquid-glass" id="sound" type="button" aria-label="Music" aria-pressed="false">
+  <span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+</button>
+<audio id="bgm" src="audio/bgm.mp3" loop preload="none"></audio>
+
+<div class="lb" id="lb" role="dialog" aria-modal="true" aria-label="Photo viewer">
+  <div class="lb-top"><span class="count" id="lbCount"></span><button id="lbClose" type="button">Close</button></div>
+  <div class="lb-stage" id="lbStage">
+    <img id="lbImg" alt="">
+    <button class="prev" id="lbPrev" type="button" aria-label="Previous photo"></button>
+    <button class="next" id="lbNext" type="button" aria-label="Next photo"></button>
+  </div>
+  <div class="lb-note"><h4 id="lbTitle"></h4><p id="lbBlurb"></p></div>
+  <div class="lb-meta" id="lbMeta"></div>
+  <div class="strip" id="strip"></div>
+</div>
+
+<script>
+(async () => {
+  const $ = (s) => document.querySelector(s);
+  const pad = (n) => String(n).padStart(2, "0");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const mobile = matchMedia("(max-width: 640px)");
+  $("#year").textContent = new Date().getFullYear();
+
+  // the site's name lives here (and in <title>)
+  const SITE_NAME = "Hwan";
+  document.querySelectorAll("[data-site-name]").forEach((el) => el.textContent = SITE_NAME);
+
+  /* ——— mobile menu ——— */
+  const menuBtn = $("#menuBtn"), menu = $("#mobileMenu");
+  const setMenu = (open) => { menuBtn.setAttribute("aria-expanded", open); menu.classList.toggle("open", open); };
+  menuBtn.addEventListener("click", () => setMenu(menuBtn.getAttribute("aria-expanded") !== "true"));
+  menu.addEventListener("click", (e) => { if (e.target.closest("a")) setMenu(false); });
+
+  let all = [];
+  try { all = await (await fetch("photos.json")).json(); } catch (e) { all = []; }
+  if (!all.length) {
+    $("#cats").innerHTML = '<p class="empty">Photographs are on their way.</p>';
+    return;
+  }
+  const shots = all.filter((p) => p.kind !== "poster");
+  const exifLine = (p) => [p.focal, p.aperture, p.shutter, p.iso].filter(Boolean);
+
+  /* ——— cinematic hero: featured photos with previous / next ——— */
+  const ICON = {"camera": "<path d=\"M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z\"/><circle cx=\"12\" cy=\"13\" r=\"3\"/>", "aperture": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m14.31 8 5.74 9.94\"/><path d=\"M9.69 8h11.48\"/><path d=\"m7.38 12 5.74-9.94\"/><path d=\"M9.69 16 3.95 6.06\"/><path d=\"M14.31 16H2.83\"/><path d=\"m16.62 12-5.74 9.94\"/>", "clock": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><polyline points=\"12 6 12 12 16 14\"/>", "calendar": "<path d=\"M8 2v4\"/><path d=\"M16 2v4\"/><rect width=\"18\" height=\"18\" x=\"3\" y=\"4\" rx=\"2\"/><path d=\"M3 10h18\"/>"};
+  const svg = (k) => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>`;
+  const bg = $("#heroBg"), heroMeta = $("#heroMeta");
+  let heroPicks = shots.filter((p) => "hero" in p).sort((a, b) => a.hero - b.hero);
+  if (!heroPicks.length) heroPicks = shots.slice(0, 1);
+  heroPicks = heroPicks.slice(0, 1); // the landing page is the one photo
+  const heroImgs = heroPicks.map((p, i) => {
+    const im = new Image(); im.alt = ""; im.decoding = "async";
+    if (i === 0) { im.src = p.src; im.className = "on"; } else { im.dataset.src = p.src; }
+    bg.appendChild(im); return im;
+  });
+  let heroIdx = 0;
+  function heroInfo(p) {
+    const bits = [
+      p.camera && `<span>${svg("camera")}<b>${p.camera}</b></span>`,
+      (p.focal || p.aperture) && `<span>${svg("aperture")}${[p.focal, p.aperture].filter(Boolean).join(" · ")}</span>`,
+      p.shutter && `<span>${svg("clock")}${p.shutter}${p.iso ? " · " + p.iso : ""}</span>`,
+    ].filter(Boolean);
+    if (heroMeta) heroMeta.innerHTML = bits.join("");
+  }
+  function showHero(i) {
+    const next = (i + heroImgs.length) % heroImgs.length;
+    if (next === heroIdx) return;
+    const im = heroImgs[next];
+    if (im.dataset.src) { im.src = im.dataset.src; delete im.dataset.src; }
+    const go = () => {
+      heroImgs[heroIdx].classList.remove("on");
+      heroIdx = next; im.classList.add("on"); heroInfo(heroPicks[heroIdx]);
+      living && living.show(heroPicks[heroIdx], im);
+    };
+    im.decode ? im.decode().then(go, go) : go();
+  }
+  /* ——— living photo: the lake moves, light drifts, the water answers the cursor ——— */
+  const living = (() => {
+    const cv = $("#heroGl");
+    const gl = !reduce && cv.getContext("webgl", { premultipliedAlpha: false, antialias: false });
+    if (!gl) return null;
+    const VS = "attribute vec2 a;varying vec2 v;void main(){v=a*.5+.5;gl_Position=vec4(a,0.,1.);}";
+    const FS = `precision highp float;
+varying vec2 v;
+uniform sampler2D T; uniform vec2 R; uniform float A, W, t; uniform vec2 M; uniform float Mi;
+float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
+  return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}
+float fbm(vec2 p){float s=0.,a=.5;for(int i=0;i<5;i++){s+=a*vn(p);p=p*2.03+vec2(1.7,9.2);a*=.5;}return s;}
+// clouds drift across the sky above the mountain; patches gather and thin out, so they come and go
+float cloud(vec2 p, float t){
+  vec2 q = vec2(p.x*2.6 - t*.025, p.y*7.);
+  float n = fbm(q + vec2(fbm(q*.6 + t*.01)*.8, 0.));
+  float come = .5 + .5*sin(p.x*1.9 - t*.021 + 2.*sin(t*.013));   // where the sky is busy right now
+  float a = smoothstep(.74 - .32*come, 1. - .32*come, n);
+  float band = smoothstep(.0, .1, p.y)*(1. - smoothstep(.24, .34, p.y));
+  return a*band;
+}
+void main(){
+  vec2 s = vec2(v.x, 1.-v.y);                       // screen, top = 0
+  float sa = R.x/R.y;
+  vec2 sc = sa > A ? vec2(1., A/sa) : vec2(sa/A, 1.);
+  float z = 1.05 + .02*sin(t*.07);                 // slow breathing zoom
+  vec2 fo = vec2(.5, .4);                           // object-position 50% 40%
+  vec2 uv = (s - .5)*sc/z + .5 + (fo - .5)*(1. - sc/z) + (M - .5)*.012;
+  float d = clamp((uv.y - W)/(1. - W), 0., 1.);     // depth into the water
+  float on = smoothstep(W, W + .012, uv.y);
+  // layered swell: long slow rolls plus fine chop, stronger toward the viewer
+  float sw = sin(uv.y*160. - t*1.3 + sin(uv.x*9. + t*.45)*1.6)*.0016
+           + sin(uv.y*420. - t*2.3 + uv.x*20.)*.0006
+           + sin(uv.x*38. + uv.y*60. + t*.9)*.0007;
+  // a ring of ripples that follows the pointer across the lake
+  vec2 q = (s - M)*vec2(sa, 1.);
+  float r = length(q);
+  float ring = Mi*sin(r*90. - t*5.)*exp(-r*7.)*.006;
+  vec2 off = vec2(sw*(.35 + 1.4*d) + ring, sw*.55*d + ring*.6)*on;
+  vec3 c = texture2D(T, clamp(uv + off, .001, .999)).rgb;
+  // clouds in the sky, and their faint reflection in the lake
+  float ca = cloud(uv, t)*(1. - on);
+  float cr = cloud(vec2(uv.x + off.x*3., 2.*W - uv.y), t)*on*(1. - d)*.35;
+  c = mix(c, vec3(.96, .975, 1.)*(.92 + .08*(1. - uv.y*3.)), ca*.88);
+  c = mix(c, c + .22, cr);
+  // glints on the water, sparse and soft
+  float g = pow(max(0., sin(uv.x*520. + t*2.1)*sin(uv.y*900. - t*3.3)), 18.)*on*(1. - d*.5);
+  c += g*.22;
+  // light drifting across sky and slope
+  float sky = 1. - on;
+  c *= 1. + sky*.05*sin(uv.x*3. - t*.18 + uv.y*2.);
+  // fine film grain
+  c += (h(s*R + fract(t)*91.) - .5)*.012;
+  gl_FragColor = vec4(c, 1.);
+}`;
+    const mk = (type, src) => { const sh = gl.createShader(type); gl.shaderSource(sh, src); gl.compileShader(sh); return gl.getShaderParameter(sh, gl.COMPILE_STATUS) ? sh : null; };
+    const vs = mk(gl.VERTEX_SHADER, VS), fs = mk(gl.FRAGMENT_SHADER, FS);
+    if (!vs || !fs) return null;
+    const pr = gl.createProgram(); gl.attachShader(pr, vs); gl.attachShader(pr, fs); gl.linkProgram(pr);
+    if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) return null;
+    gl.useProgram(pr);
+    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(pr, "a"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    const U = (n) => gl.getUniformLocation(pr, n);
+    const u = { R: U("R"), A: U("A"), W: U("W"), t: U("t"), M: U("M"), Mi: U("Mi") };
+    const tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]].forEach(([k, val]) => gl.texParameteri(gl.TEXTURE_2D, k, val));
+
+    let photo = null, raf = 0, running = false, visible = true;
+    const mouse = { x: .5, y: .62, tx: .5, ty: .62, i: 0, ti: 0 };
+    const heroEl = $(".hero");
+    heroEl.addEventListener("pointermove", (e) => {
+      const r = heroEl.getBoundingClientRect();
+      mouse.tx = (e.clientX - r.left) / r.width; mouse.ty = (e.clientY - r.top) / r.height; mouse.ti = 1;
+    }, { passive: true });
+    heroEl.addEventListener("pointerleave", () => { mouse.ti = 0; });
+    new IntersectionObserver((es) => { visible = es[0].isIntersecting; if (visible) start(); }).observe(heroEl);
+
+    function size() {
+      const dpr = Math.min(devicePixelRatio || 1, 1.75);
+      const w = Math.round(cv.clientWidth * dpr), h = Math.round(cv.clientHeight * dpr);
+      if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+    }
+    addEventListener("resize", size);
+    const t0 = performance.now();
+    function frame(now) {
+      if (!photo || !visible) { running = false; return; }
+      size();
+      mouse.x += (mouse.tx - mouse.x) * .06; mouse.y += (mouse.ty - mouse.y) * .06; mouse.i += (mouse.ti - mouse.i) * .04;
+      gl.viewport(0, 0, cv.width, cv.height);
+      gl.uniform2f(u.R, cv.width, cv.height);
+      gl.uniform1f(u.A, photo.w / photo.h);
+      gl.uniform1f(u.W, photo.water);
+      gl.uniform1f(u.t, (now - t0) / 1000);
+      gl.uniform2f(u.M, mouse.x, mouse.y);
+      gl.uniform1f(u.Mi, mouse.i);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      raf = requestAnimationFrame(frame);
+    }
+    function start() { if (!running && photo && visible) { running = true; raf = requestAnimationFrame(frame); } }
+    return {
+      show(p, img) {
+        if (!p.water) { cv.classList.remove("on"); photo = null; return; }
+        const go = () => {
+          gl.bindTexture(gl.TEXTURE_2D, tex);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, img);
+          photo = p; start();
+          requestAnimationFrame(() => cv.classList.add("on"));
+        };
+        img.complete && img.naturalWidth ? go() : img.addEventListener("load", go, { once: true });
+      },
+    };
+  })();
+
+  heroInfo(heroPicks[0]);
+  // the title sits on the lake's waterline and is mirrored into the water below it
+  const mirror = $("#mirror"), heroSec = $(".hero");
+  function placeMirror() {
+    const p = heroPicks[0], wl = p.water || .6;
+    const W = heroSec.clientWidth, H = heroSec.clientHeight;
+    const s = Math.max(W / p.w, H / p.h), dh = p.h * s;
+    let y = wl * dh - (dh - H) * .4;
+    y = H / 2 + (y - H / 2) * 1.1; // the photo's slow zoom
+    const lo = H * .3, hi = H - (heroSec.querySelector(".hero-foot").offsetHeight + mirror.querySelector("h1").offsetHeight * .9);
+    const at = Math.max(lo, Math.min(hi, y));
+    heroSec.style.setProperty("--wl", Math.round(at) + "px");
+    mirror.classList.toggle("dry", Math.abs(at - y) > 40); // too short a screen to reach the water: no reflection
+  }
+  placeMirror(); addEventListener("resize", placeMirror);
+  // split the headline (and its reflection) into letters so a wave can run through them
+  mirror.querySelectorAll(".hero-title").forEach((el) => {
+    const text = el.textContent; let i = 0;
+    if (el.tagName === "H1") el.setAttribute("aria-label", text);
+    el.innerHTML = text.split(" ").map((w) => `<span class="w" aria-hidden="true">${[...w].map((c) => `<span class="ch" style="--i:${i++}">${c}</span>`).join("")}</span>`).join(" ");
+  });
+  if (!reduce) {
+    const moods = ["drift"]; let m = 0;
+    const play = () => {
+      mirror.classList.remove(...moods); void mirror.offsetWidth;
+      mirror.classList.add(moods[m++ % moods.length]);
+    };
+    setTimeout(() => { play(); setInterval(play, 15000); }, 4000);
+  }
+  document.fonts && document.fonts.ready.then(placeMirror);
+  living && living.show(heroPicks[0], heroImgs[0]);
+  // warm the next photos once the first one is up
+  addEventListener("load", () => heroImgs.forEach((im) => { if (im.dataset.src) { im.src = im.dataset.src; delete im.dataset.src; } }));
+
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const clamp01 = (v) => Math.min(1, Math.max(0, v));
+
+  function onScroll() { bendFrames(); }
+  addEventListener("scroll", onScroll, { passive: true });
+  addEventListener("resize", onScroll);
+  addEventListener("load", onScroll);
+
+  /* ——— work: one reel ordered by colour, each photo whole, at its own proportions ——— */
+  const frames = [];
+  const reel = document.createElement("div"); reel.className = "reel"; $("#cats").appendChild(reel);
+  shots.forEach((p, i) => {
+    const fig = document.createElement("figure"); fig.className = "item";
+    fig.style.setProperty("--r", (p.w / p.h).toFixed(4));
+    if (p.w / p.h > 1.6) fig.classList.add("wide");
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "frame"; b.style.setProperty("--tone", p.tone);
+    b.setAttribute("aria-label", `Open ${p.title || "photo " + (i + 1)}`);
+    const im = new Image(); im.alt = ""; im.loading = "lazy"; im.decoding = "async";
+    im.onload = () => im.classList.add("loaded");
+    im.dataset.src = p.mid || p.thumb;
+    b.appendChild(im);
+    const cap = document.createElement("figcaption"); cap.className = "note";
+    cap.innerHTML = `<span class="n">${pad(i + 1)}</span><h4></h4><p></p><span class="ex"></span>`;
+    cap.querySelector("h4").textContent = p.title || "";
+    cap.querySelector("p").textContent = p.blurb || "";
+    cap.querySelector(".ex").textContent = [p.camera, ...exifLine(p)].filter(Boolean).join(" · ");
+    fig.append(b, cap);
+    b.addEventListener("click", () => openLb(shots, i, ""));
+    reel.appendChild(fig); frames.push({ el: b, img: im, p });
+  });
+
+  /* ——— warp: photos are drawn in WebGL and bend like a sheet as they scroll ———
+     Near the top and bottom of the screen they curve away as if wrapped round a drum;
+     scrolling fast bows them like paper in a draught. */
+  const warp = (() => {
+    const cv = $("#warp"), work = $("#work");
+    const gl = !reduce && cv.getContext("webgl", { premultipliedAlpha: true, alpha: true, antialias: true });
+    if (!gl) return null;
+    const VS = `attribute vec2 uv;
+uniform vec4 rect; uniform vec2 vp; uniform float vel, hov, straight, t, gust, seed;
+uniform vec3 brush;
+varying vec2 v; varying float shade, vv, fold; varying vec3 nrm;
+float th(float x){ float e = exp(2.*clamp(x, -6., 6.)); return (e - 1.)/(e + 1.); }
+// cloth: the photo hangs from its top edge and the wind sends folds across it, growing toward the free bottom edge;
+// the cursor lifts the fabric where it brushes past
+float clothZ(vec2 q){
+  float a = q.y, b = q.x, tt = t*.5 + seed;
+  float hang = pow(a, 1.3);
+  float drift = 1.8*sin(.23*tt);
+  float row = sin(9.4248*b - 2.95*tt + drift) + .45*sin(23.876*b + 5.97*tt + 3.);
+  float col = (.7 + .3*sin(13.823*a - 1.7*tt))*hang;
+  float S = min(rect.z, rect.w);
+  float z = min(S*.06, 40.)*th(1.25*gust*row*col) + min(S*.07, 40.)*hang*(.3 + .7*gust);
+  vec2 dp = (q - brush.xy)*rect.zw;
+  float g = exp(-dot(dp, dp)/22500.);
+  return z + brush.z*g*min(S*.05, 34.)*(1. + .3*sin(length(dp)*.06 - tt*9.));
+}
+void main(){
+  v = uv; vv = vel;
+  float e = .012;
+  float z0 = clothZ(uv), zl = clothZ(uv - vec2(e, 0.)), zr = clothZ(uv + vec2(e, 0.)), zu = clothZ(uv - vec2(0., e)), zd = clothZ(uv + vec2(0., e));
+  vec2 g = vec2((zr - zl)/(2.*e*rect.z), (zd - zu)/(2.*e*rect.w));
+  nrm = normalize(vec3(-g, 1.));
+  fold = clamp(1. - (zl + zr + zu + zd - 4.*z0)*.012, .86, 1.06);
+  vec2 c = rect.xy + rect.zw*.5;
+  vec2 px = rect.xy + uv*rect.zw;
+  px = c + (px - c)*(1. + hov*.015);
+  // the fabric's depth seen through a 1200px lens: folds that billow toward you get a little bigger
+  px = c + (px - c)*(1200./(1200. - z0));
+  // bow with scroll speed: the middle of the photo lags behind its sides
+  px.y -= sin(uv.x*3.14159)*vel*.55;
+  // curve away toward the screen edges, flat through the middle; capped so the sheet never folds over itself
+  float d = clamp(px.y/vp.y - .5, -.66, .66);
+  float a = pow(abs(d)*2., 2.5);
+  float z = -a*vp.y*.38;
+  float f = vp.y*1.25;
+  float k = mix(f/(f - z), 1., straight); // wide panoramas stay straight so their full length shows
+  // the sides pinch in as the sheet curves away; height barely changes, so the whole photo stays readable
+  vec2 sp = vec2(vp.x*.5 + (px.x - vp.x*.5)*k, vp.y*.5 + d*vp.y*mix(1., k, .22));
+  shade = 1. - min(a, 1.)*.45;
+  gl_Position = vec4(sp.x/vp.x*2. - 1., 1. - sp.y/vp.y*2., 0., 1.);
+}`;
+    const FS = `precision mediump float;
+uniform sampler2D T; uniform float alpha;
+varying vec2 v; varying float shade, vv, fold; varying vec3 nrm;
+void main(){
+  float sh = vv*.00025;
+  vec3 c = vec3(texture2D(T, v + vec2(0., sh)).r, texture2D(T, v).g, texture2D(T, v - vec2(0., sh)).b);
+  // light raking across the folds, plus a faint sheen on the crests
+  vec3 n = normalize(nrm), L = normalize(vec3(-.3, .42, .86));
+  float flat_ = .58 + .42*L.z;
+  vec3 lit = c*mix(1., (.58 + .42*dot(n, L))/flat_*fold, .65);
+  vec3 H = normalize(L + vec3(0., 0., 1.));
+  float sf = pow(H.z, 34.);
+  lit += .1*max(pow(max(dot(n, H), 0.), 34.) - sf, 0.)/(1. - sf)*mix(vec3(1.), c, .35);
+  gl_FragColor = vec4(clamp(lit, 0., 1.)*shade*alpha, alpha);
+}`;
+    const mk = (t, src) => { const sh = gl.createShader(t); gl.shaderSource(sh, src); gl.compileShader(sh); return gl.getShaderParameter(sh, gl.COMPILE_STATUS) ? sh : null; };
+    const vs = mk(gl.VERTEX_SHADER, VS), fs = mk(gl.FRAGMENT_SHADER, FS);
+    if (!vs || !fs) return null;
+    const pr = gl.createProgram(); gl.attachShader(pr, vs); gl.attachShader(pr, fs); gl.linkProgram(pr);
+    if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) return null;
+    gl.useProgram(pr);
+    // a finely divided sheet so it can curve smoothly
+    const NX = 40, NY = 56, verts = [], idx = [];
+    for (let y = 0; y <= NY; y++) for (let x = 0; x <= NX; x++) verts.push(x / NX, y / NY);
+    for (let y = 0; y < NY; y++) for (let x = 0; x < NX; x++) {
+      const a = y * (NX + 1) + x, b = a + 1, c = a + NX + 1, d = c + 1;
+      idx.push(a, b, c, b, d, c);
+    }
+    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(pr, "uv"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    const U = {}; ["rect", "vp", "vel", "hov", "alpha", "straight", "t", "gust", "seed", "brush"].forEach((n) => U[n] = gl.getUniformLocation(pr, n));
+    gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    work.classList.add("gl");
+
+    const items = frames.map((f, i) => ({ ...f, tex: null, loading: false, shown: 0, hov: 0, hovT: 0, seed: i * 7.31, bx: .5, by: .5, tx: .5, ty: .5, bs: 0 }));
+    items.forEach((it) => {
+      const at = (e) => { const r = it.el.getBoundingClientRect(); it.tx = (e.clientX - r.left) / r.width; it.ty = (e.clientY - r.top) / r.height; };
+      it.el.addEventListener("pointerenter", (e) => { it.hovT = 1; at(e); if (it.bs < .01) { it.bx = it.tx; it.by = it.ty; } kick(); });
+      it.el.addEventListener("pointermove", at);
+      it.el.addEventListener("pointerleave", () => { it.hovT = 0; kick(); });
+    });
+    const t0 = performance.now(); let gust = .5;
+    function load(it) {
+      it.loading = true;
+      const im = new Image(); im.decoding = "async"; im.src = it.p.mid || it.p.thumb;
+      im.onload = () => {
+        if (!it.loading) return;
+        const tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, im);
+        it.tex = tex; it.loading = false; kick();
+      };
+    }
+    function drop(it) { if (it.tex) gl.deleteTexture(it.tex); it.tex = null; it.loading = false; it.shown = 0; }
+
+    let lastY = scrollY, vel = 0, running = false, idle = 0;
+    function frame() {
+      const vw = innerWidth, vh = innerHeight, dpr = Math.min(devicePixelRatio || 1, 2);
+      if (cv.width !== Math.round(vw * dpr) || cv.height !== Math.round(vh * dpr)) { cv.width = Math.round(vw * dpr); cv.height = Math.round(vh * dpr); }
+      const dy = scrollY - lastY; lastY = scrollY;
+      vel += (Math.max(-90, Math.min(90, dy)) - vel) * .12;
+      gl.viewport(0, 0, cv.width, cv.height);
+      gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.uniform2f(U.vp, vw, vh); gl.uniform1f(U.vel, vel);
+      const t = (performance.now() - t0) / 1000, st = t * .5;
+      gust += (Math.max(.55 + .35 * Math.sin(st * .31 + 1.3) + .25 * Math.sin(st * .83) * (.5 + .5 * Math.sin(st * .17)), .15) - gust) * .03;
+      gl.uniform1f(U.t, t); gl.uniform1f(U.gust, gust);
+      let busy = Math.abs(vel) > .05 || dy !== 0;
+      for (const it of items) {
+        const r = it.el.getBoundingClientRect();
+        if (!r.height) { if (it.tex || it.loading) drop(it); continue; }
+        const near = r.bottom > -vh && r.top < vh * 2, far = r.bottom < -vh * 3 || r.top > vh * 4;
+        if (near && !it.tex && !it.loading) load(it);
+        if (far && (it.tex || it.loading)) drop(it);
+        if (!it.tex || r.bottom < -vh * .3 || r.top > vh * 1.3) continue;
+        if (it.shown < 1) { it.shown = Math.min(1, it.shown + .035); busy = true; }
+        it.hov += (it.hovT - it.hov) * .12;
+        it.bs += (it.hovT - it.bs) * (it.hovT ? .13 : .04); it.bx += (it.tx - it.bx) * .18; it.by += (it.ty - it.by) * .18;
+        busy = true; // the cloth keeps moving while any photo is on screen
+        gl.bindTexture(gl.TEXTURE_2D, it.tex);
+        gl.uniform4f(U.rect, r.left, r.top, r.width, r.height);
+        gl.uniform1f(U.hov, it.hov); gl.uniform1f(U.alpha, it.shown); gl.uniform1f(U.straight, it.p.w / it.p.h > 1.6 ? 1 : 0);
+        gl.uniform1f(U.seed, it.seed); gl.uniform3f(U.brush, it.bx, it.by, it.bs);
+        gl.drawElements(gl.TRIANGLES, idx.length, gl.UNSIGNED_SHORT, 0);
+      }
+      idle = busy ? 0 : idle + 1;
+      if (idle > 20) { running = false; return; }
+      requestAnimationFrame(frame);
+    }
+    function kick() { idle = 0; if (!running) { running = true; requestAnimationFrame(frame); } }
+    addEventListener("scroll", kick, { passive: true });
+    addEventListener("resize", kick);
+    kick();
+    return { kick };
+  })();
+  if (!warp) frames.forEach((f) => { f.img.src = f.img.dataset.src; });
+  function bendFrames() { warp && warp.kick(); }
+
+  /* ——— footer line: a trail of mosaic photographs inside the letters ——— */
+  const PAINT_FOOTER = false; // switched off for now at Haziq's request; set to true to bring the effect back
+  PAINT_FOOTER && (() => {
+    const h2 = $("#footLine"), cv = h2.querySelector("canvas"), ctx = cv.getContext("2d");
+    const mk = () => document.createElement("canvas");
+    const mask = mk(), layer = mk(), mos = [mk(), mk(), mk()];
+    let W = 0, H = 0, dpr = 1, cell = 12, rad = 60, cols = 0, rows = 0, field = new Float32Array(0);
+    let photoIdx = 0, photo = null, live = false, raf = 0, visible = false;
+    const pics = shots.filter((p) => !/IMG_08/.test(p.source)); // colour photos only
+
+    // redraw the heading's own words, where the browser laid them out, into a mask
+    function fit() {
+      const box = h2.getBoundingClientRect();
+      dpr = Math.min(devicePixelRatio || 1, 2);
+      W = Math.ceil(box.width); H = Math.ceil(box.height);
+      cv.style.width = W + "px"; cv.style.height = H + "px";
+      for (const c of [cv, mask, layer, ...mos]) { c.width = Math.round(W * dpr); c.height = Math.round(H * dpr); }
+      const mc = mask.getContext("2d"); mc.setTransform(dpr, 0, 0, dpr, 0, 0); mc.textBaseline = "alphabetic";
+      const walker = document.createTreeWalker(h2, NodeFilter.SHOW_TEXT);
+      let fs = 40;
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        const st = getComputedStyle(n.parentElement);
+        h2.classList.remove("painted"); const color = getComputedStyle(n.parentElement).color;
+        fs = parseFloat(st.fontSize);
+        mc.font = `${st.fontWeight} ${st.fontSize} ${st.fontFamily}`;
+        if ("letterSpacing" in mc) mc.letterSpacing = st.letterSpacing;
+        mc.fillStyle = color;
+        for (const m of n.textContent.matchAll(/\S+/g)) {
+          const r = document.createRange(); r.setStart(n, m.index); r.setEnd(n, m.index + m[0].length);
+          const rc = r.getClientRects()[0]; if (!rc) continue;
+          const tm = mc.measureText(m[0]);
+          const base = rc.top - box.top + (rc.height - (tm.fontBoundingBoxAscent + tm.fontBoundingBoxDescent)) / 2 + tm.fontBoundingBoxAscent;
+          mc.fillText(m[0], rc.left - box.left, base);
+        }
+      }
+      h2.classList.add("painted");
+      cell = Math.max(5, Math.round(fs / 11)); rad = fs * .6;
+      cols = Math.ceil(W / cell); rows = Math.ceil(H / cell); field = new Float32Array(cols * rows);
+      buildMosaic(); draw();
+    }
+    // the photo, covered into the heading's box at three block sizes
+    function buildMosaic() {
+      if (!photo || !W) return;
+      const s = Math.max(W / photo.width, H / photo.height);
+      const sw = W / s, sh = H / s, sx = (photo.width - sw) / 2, sy = (photo.height - sh) * .45;
+      [cell * .5, cell, cell * 2].forEach((b, i) => {
+        const tiny = mk(); tiny.width = Math.max(1, Math.round(W / b)); tiny.height = Math.max(1, Math.round(H / b));
+        tiny.getContext("2d").drawImage(photo, sx, sy, sw, sh, 0, 0, tiny.width, tiny.height);
+        const c = mos[i].getContext("2d"); c.imageSmoothingEnabled = false;
+        c.clearRect(0, 0, mos[i].width, mos[i].height); c.drawImage(tiny, 0, 0, mos[i].width, mos[i].height);
+      });
+    }
+    function nextPhoto() {
+      const p = pics[photoIdx++ % pics.length]; const im = new Image();
+      im.onload = () => { photo = im; buildMosaic(); };
+      im.src = p.mid || p.thumb;
+    }
+    function draw() {
+      const L = layer.getContext("2d"); L.setTransform(1, 0, 0, 1, 0, 0);
+      L.globalCompositeOperation = "source-over"; L.clearRect(0, 0, layer.width, layer.height);
+      let any = false;
+      if (photo) for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+        const v = field[y * cols + x]; if (v < .02) continue; any = true;
+        const src = mos[v > .62 ? 0 : v > .3 ? 1 : 2];
+        L.globalAlpha = Math.min(1, v * 3.2);
+        const sx = x * cell * dpr, sy = y * cell * dpr, sz = cell * dpr + 1;
+        L.drawImage(src, sx, sy, sz, sz, sx, sy, sz, sz);
+      }
+      L.globalAlpha = 1; L.globalCompositeOperation = "destination-in"; L.drawImage(mask, 0, 0);
+      ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height);
+      ctx.drawImage(mask, 0, 0); ctx.drawImage(layer, 0, 0);
+      return any;
+    }
+    // paint into the trail field along the path the pointer took
+    let last = null;
+    function splat(x, y) {
+      const r = rad, r2 = r * r;
+      const steps = last ? Math.max(1, Math.ceil(Math.hypot(x - last.x, y - last.y) / (cell * .8))) : 1;
+      for (let s = 1; s <= steps; s++) {
+        const px = last ? last.x + (x - last.x) * s / steps : x, py = last ? last.y + (y - last.y) * s / steps : y;
+        const x0 = Math.max(0, Math.floor((px - r) / cell)), x1 = Math.min(cols - 1, Math.ceil((px + r) / cell));
+        const y0 = Math.max(0, Math.floor((py - r) / cell)), y1 = Math.min(rows - 1, Math.ceil((py + r) / cell));
+        for (let j = y0; j <= y1; j++) for (let i = x0; i <= x1; i++) {
+          const dx = (i + .5) * cell - px, dy = (j + .5) * cell - py, d2 = dx * dx + dy * dy;
+          if (d2 > r2) continue;
+          const k = j * cols + i;
+          field[k] = Math.min(1, field[k] + (1 - d2 / r2) * (.35 + Math.random() * .25) / steps * 1.6);
+        }
+      }
+      last = { x, y }; wake();
+    }
+    let lastMove = 0, ghost = null, nextGhost = 0;
+    function frame(now) {
+      raf = 0;
+      // when nobody is touching it, a ghost hand sweeps through now and then, so it moves on phones too
+      if (!ghost && visible && now - lastMove > 5000 && now > nextGhost) { ghost = { t0: now, dir: Math.random() < .5 ? 1 : -1 }; nextGhost = now + 11000; }
+      if (ghost) {
+        const k = (now - ghost.t0) / 2600;
+        if (k > 1) { ghost = null; last = null; }
+        else { const u = ghost.dir > 0 ? k : 1 - k; splat(-rad * .5 + u * (W + rad), H * (.5 + .3 * Math.sin(k * 7.5))); }
+      }
+      for (let i = 0; i < field.length; i++) field[i] *= .962;
+      const any = draw();
+      if (any) live = true;
+      else if (live) { live = false; nextPhoto(); }
+      if (any || ghost || visible) raf = requestAnimationFrame(frame);
+    }
+    function wake() { if (!raf && !reduce) raf = requestAnimationFrame(frame); }
+    const at = (e) => { const r = h2.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+    h2.addEventListener("pointerenter", (e) => { last = at(e); });
+    h2.addEventListener("pointermove", (e) => { const p = at(e); lastMove = performance.now(); ghost = null; splat(p.x, p.y); });
+    h2.addEventListener("pointerleave", () => { last = null; });
+    new IntersectionObserver((es) => { visible = es[0].isIntersecting; if (visible) { nextGhost = performance.now() + 1500; wake(); } }).observe(h2);
+    nextPhoto();
+    (document.fonts ? document.fonts.ready : Promise.resolve()).then(fit);
+    addEventListener("resize", fit);
+    fit();
+  })();
+
+  /* ——— background music: browsers only allow sound after a tap or key, so it starts on the first one ——— */
+  (() => {
+    const a = $("#bgm"), btn = $("#sound"), VOL = .45;
+    let muted = false, fade = 0;
+    try { muted = localStorage.getItem("hwan-muted") === "1"; } catch (e) {}
+    const set = (on) => btn.setAttribute("aria-pressed", on);
+    function ramp(to, ms, done) {
+      cancelAnimationFrame(fade); const from = a.volume, t0 = performance.now();
+      const step = (now) => { const k = Math.max(0, Math.min(1, (now - t0) / ms)); a.volume = from + (to - from) * k; k < 1 ? fade = requestAnimationFrame(step) : done && done(); };
+      fade = requestAnimationFrame(step);
+    }
+    function play() { a.volume = 0; const p = a.play(); set(true); (p && p.catch) && p.catch(() => set(false)); ramp(VOL, 2500); }
+    function stop() { set(false); ramp(0, 700, () => a.pause()); }
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      muted = btn.getAttribute("aria-pressed") === "true"; try { localStorage.setItem("hwan-muted", muted ? "1" : "0"); } catch (err) {}
+      muted ? stop() : play();
+    });
+    const first = (e) => {
+      ["pointerdown", "keydown", "touchend"].forEach((t) => removeEventListener(t, first, true));
+      if (!muted && a.paused && !(e.target.closest && e.target.closest("#sound, #gate"))) play();
+    };
+    ["pointerdown", "keydown", "touchend"].forEach((t) => addEventListener(t, first, true));
+    // the entrance: shown once per visit; its button tap is what lets the browser play sound
+    const gate = $("#gate");
+    let seen = false; try { seen = sessionStorage.getItem("hwan-entered") === "1"; } catch (e) {}
+    if (!seen) {
+      gate.hidden = false; document.documentElement.classList.add("gated"); document.documentElement.style.overflow = "hidden";
+      a.preload = "auto"; $("#gateSound").focus({ preventScroll: true });
+      const enter = (withSound) => {
+        try { sessionStorage.setItem("hwan-entered", "1"); localStorage.setItem("hwan-muted", withSound ? "0" : "1"); } catch (e) {}
+        muted = !withSound; if (withSound) play();
+        gate.classList.add("out"); document.documentElement.classList.remove("gated"); document.documentElement.style.overflow = "";
+        setTimeout(() => { gate.hidden = true; }, 950);
+      };
+      $("#gateSound").addEventListener("click", () => enter(true));
+      $("#gateQuiet").addEventListener("click", () => enter(false));
+    }
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) { if (!a.paused) { a.dataset.resume = "1"; a.pause(); } }
+      else if (a.dataset.resume) { delete a.dataset.resume; play(); }
+    });
+  })();
+
+  /* ——— cursor ——— */
+  const cur = $("#cursor");
+  addEventListener("pointermove", (e) => {
+    cur.style.setProperty("--cx", e.clientX + "px"); cur.style.setProperty("--cy", e.clientY + "px");
+    const over = e.target.closest && e.target.closest(".frame") && !lb.classList.contains("open");
+    cur.style.setProperty("--cs", over ? 1 : 0);
+  }, { passive: true });
+
+  /* ——— lightbox ——— */
+  const lb = $("#lb"), lbImg = $("#lbImg"), strip = $("#strip");
+  let list = shots, idx = 0, lastFocus = null;
+  function fillStrip() {
+    strip.replaceChildren(...list.map((p, i) => {
+      const b = document.createElement("button"); b.type = "button";
+      b.setAttribute("aria-label", `Frame ${i + 1}`);
+      const im = new Image(); im.src = p.thumb; im.alt = ""; im.loading = "lazy";
+      b.appendChild(im); b.addEventListener("click", () => show(i)); return b;
+    }));
+  }
+  function show(i) {
+    const n = list.length;
+    idx = (i + n) % n;
+    const p = list[idx];
+    lbImg.classList.add("out");
+    const next = new Image(); next.src = p.src;
+    const swap = () => { if (list[idx] === p) { lbImg.src = p.src; lbImg.classList.remove("out"); } };
+    next.decode ? next.decode().then(swap, swap) : (next.onload = swap);
+    $("#lbCount").textContent = `${listName ? listName + " · " : ""}${pad(idx + 1)} / ${pad(n)}`;
+    const bits = [p.camera && `<b>${p.camera}</b>`, p.lens, ...exifLine(p)].filter(Boolean);
+    $("#lbTitle").textContent = p.title || ""; $("#lbBlurb").textContent = p.blurb || "";
+    $("#lbMeta").innerHTML = bits.map((s) => `<span>${s}</span>`).join("");
+    [...strip.children].forEach((b, j) => b.classList.toggle("cur", j === idx));
+    strip.children[idx].scrollIntoView({ block: "nearest", inline: "center", behavior: reduce ? "auto" : "smooth" });
+    [list[(idx + 1) % n], list[(idx - 1 + n) % n]].forEach((q) => { new Image().src = q.src; });
+  }
+  let listName = "";
+  function openLb(which, i, name) {
+    lastFocus = document.activeElement; listName = name || "";
+    if (list !== which || !strip.children.length) { list = which; fillStrip(); }
+    lb.classList.add("open"); document.documentElement.style.overflow = "hidden";
+    cur.style.setProperty("--cs", 0);
+    show(i); $("#lbClose").focus();
+  }
+  function closeLb() {
+    lb.classList.remove("open"); document.documentElement.style.overflow = "";
+    lastFocus && lastFocus.focus();
+  }
+  $("#lbClose").onclick = closeLb;
+  $("#lbPrev").onclick = () => show(idx - 1);
+  $("#lbNext").onclick = () => show(idx + 1);
+  addEventListener("keydown", (e) => {
+    if (!lb.classList.contains("open")) {
+      return;
+    }
+    if (e.key === "Escape") closeLb();
+    if (e.key === "ArrowRight") show(idx + 1);
+    if (e.key === "ArrowLeft") show(idx - 1);
+  });
+  let sx = null;
+  $("#lbStage").addEventListener("touchstart", (e) => { sx = e.touches[0].clientX; }, { passive: true });
+  $("#lbStage").addEventListener("touchend", (e) => {
+    if (sx === null) return;
+    const dx = e.changedTouches[0].clientX - sx; sx = null;
+    if (Math.abs(dx) > 50) show(idx + (dx < 0 ? 1 : -1));
+  });
+})();
+</script>
