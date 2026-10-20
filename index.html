@@ -1,4 +1,9 @@
+<!doctype html>
+<html lang="en">
+<head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
 <title>Hwan</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="description" content="Hwan: photographs of Japan.">
@@ -112,7 +117,8 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
 .mirror.dry .reflect { display: none; }
 /* every few seconds a wave runs through the headline, and its reflection answers */
 .hero-title .w { display: inline-block; white-space: nowrap; }
-.hero-title .ch { display: inline-block; will-change: transform, filter, opacity; }
+.hero-title .ch { display: inline-block; }
+.mirror.drift .ch { will-change: transform, filter, opacity; }
 .mirror.swell .ch { animation: swell 1.5s cubic-bezier(.4, 0, .2, 1) both; animation-delay: calc(var(--i) * 32ms); }
 .mirror.drift .ch { animation: drift 1.9s ease-in-out both; animation-delay: calc(var(--i) * 26ms); }
 @keyframes swell {
@@ -124,7 +130,16 @@ svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-widt
   45% { opacity: .15; filter: blur(8px); transform: translateY(.08em) scale(.96); }
 }
 @media (prefers-reduced-motion: reduce) { .mirror .ch { animation: none !important; } }
+/* phones: the same look with less work per frame */
+html.lite .hero-blur { -webkit-backdrop-filter: none; backdrop-filter: none; background: linear-gradient(to top, rgb(0 0 0 / .42) 0%, rgb(0 0 0 / .12) 28%, transparent 45%); }
+html.lite .liquid-glass { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(255, 255, 255, .08); }
+html.lite .reflect .hero-title { filter: blur(.6px); }
+html.lite .mirror.drift .ch { animation-name: driftLite; }
+@keyframes driftLite { 0%, 100% { opacity: 1; transform: none; } 45% { opacity: .15; transform: translateY(.08em) scale(.96); } }
+html.lite .gate { transition: opacity .9s var(--ease); }
 .hero-foot { position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; padding: 0 16px calc(env(safe-area-inset-bottom, 0px) + 28px); }
+/* keep the buttons clear of the music toggle on narrow screens */
+@media (max-width: 640px) { .hero-foot { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 76px); } }
 .meta-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 28px; font-size: 12px; color: #d1d5db; }
 .meta-row span { display: inline-flex; align-items: center; gap: 6px; transition: opacity .5s ease-out; }
 .meta-row svg.i { width: 16px; height: 16px; }
@@ -390,6 +405,9 @@ html.gated .hero .animate-blur-fade-up { animation-play-state: paused; }
   const pad = (n) => String(n).padStart(2, "0");
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const mobile = matchMedia("(max-width: 640px)");
+  // phones and tablets get a lighter build of every effect
+  const lite = matchMedia("(pointer: coarse)").matches || innerWidth < 820 || (navigator.deviceMemory || 8) <= 4;
+  document.documentElement.classList.toggle("lite", lite);
   $("#year").textContent = new Date().getFullYear();
 
   // the site's name lives here (and in <title>)
@@ -420,7 +438,7 @@ html.gated .hero .animate-blur-fade-up { animation-play-state: paused; }
   heroPicks = heroPicks.slice(0, 1); // the landing page is the one photo
   const heroImgs = heroPicks.map((p, i) => {
     const im = new Image(); im.alt = ""; im.decoding = "async";
-    if (i === 0) { im.src = p.src; im.className = "on"; } else { im.dataset.src = p.src; }
+    if (i === 0) { im.src = lite && p.mid ? p.mid : p.src; im.className = "on"; } else { im.dataset.src = p.src; }
     bg.appendChild(im); return im;
   });
   let heroIdx = 0;
@@ -450,17 +468,21 @@ html.gated .hero .animate-blur-fade-up { animation-play-state: paused; }
     const gl = !reduce && cv.getContext("webgl", { premultipliedAlpha: false, antialias: false });
     if (!gl) return null;
     const VS = "attribute vec2 a;varying vec2 v;void main(){v=a*.5+.5;gl_Position=vec4(a,0.,1.);}";
-    const FS = `precision highp float;
+    const FS = (lite ? "#define LITE\n#define OCT 3\n" : "#define OCT 5\n") + `precision highp float;
 varying vec2 v;
 uniform sampler2D T; uniform vec2 R; uniform float A, W, t; uniform vec2 M; uniform float Mi;
 float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
   return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}
-float fbm(vec2 p){float s=0.,a=.5;for(int i=0;i<5;i++){s+=a*vn(p);p=p*2.03+vec2(1.7,9.2);a*=.5;}return s;}
+float fbm(vec2 p){float s=0.,a=.5;for(int i=0;i<OCT;i++){s+=a*vn(p);p=p*2.03+vec2(1.7,9.2);a*=.5;}return s;}
 // clouds drift across the sky above the mountain; patches gather and thin out, so they come and go
 float cloud(vec2 p, float t){
   vec2 q = vec2(p.x*2.6 - t*.025, p.y*7.);
+#ifdef LITE
+  float n = fbm(q + vec2(sin(q.y*.9 + t*.01)*.4, 0.));
+#else
   float n = fbm(q + vec2(fbm(q*.6 + t*.01)*.8, 0.));
+#endif
   float come = .5 + .5*sin(p.x*1.9 - t*.021 + 2.*sin(t*.013));   // where the sky is busy right now
   float a = smoothstep(.74 - .32*come, 1. - .32*come, n);
   float band = smoothstep(.0, .1, p.y)*(1. - smoothstep(.24, .34, p.y));
@@ -526,14 +548,16 @@ void main(){
     new IntersectionObserver((es) => { visible = es[0].isIntersecting; if (visible) start(); }).observe(heroEl);
 
     function size() {
-      const dpr = Math.min(devicePixelRatio || 1, 1.75);
+      const dpr = lite ? Math.min(devicePixelRatio || 1, 1.5) : Math.min(devicePixelRatio || 1, 1.75);
       const w = Math.round(cv.clientWidth * dpr), h = Math.round(cv.clientHeight * dpr);
       if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
     }
     addEventListener("resize", size);
-    const t0 = performance.now();
+    const t0 = performance.now(); let last = 0;
     function frame(now) {
       if (!photo || !visible) { running = false; return; }
+      if (lite && now - last < 30) { raf = requestAnimationFrame(frame); return; }
+      last = now;
       size();
       mouse.x += (mouse.tx - mouse.x) * .06; mouse.y += (mouse.ty - mouse.y) * .06; mouse.i += (mouse.ti - mouse.i) * .04;
       gl.viewport(0, 0, cv.width, cv.height);
@@ -632,7 +656,7 @@ void main(){
      scrolling fast bows them like paper in a draught. */
   const warp = (() => {
     const cv = $("#warp"), work = $("#work");
-    const gl = !reduce && cv.getContext("webgl", { premultipliedAlpha: true, alpha: true, antialias: true });
+    const gl = !reduce && cv.getContext("webgl", { premultipliedAlpha: true, alpha: true, antialias: !lite });
     if (!gl) return null;
     const VS = `attribute vec2 uv;
 uniform vec4 rect; uniform vec2 vp; uniform float vel, hov, straight, t, gust, seed;
@@ -700,7 +724,7 @@ void main(){
     if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) return null;
     gl.useProgram(pr);
     // a finely divided sheet so it can curve smoothly
-    const NX = 40, NY = 56, verts = [], idx = [];
+    const NX = lite ? 22 : 40, NY = lite ? 30 : 56, verts = [], idx = [];
     for (let y = 0; y <= NY; y++) for (let x = 0; x <= NX; x++) verts.push(x / NX, y / NY);
     for (let y = 0; y < NY; y++) for (let x = 0; x < NX; x++) {
       const a = y * (NX + 1) + x, b = a + 1, c = a + NX + 1, d = c + 1;
@@ -723,7 +747,7 @@ void main(){
     const t0 = performance.now(); let gust = .5;
     function load(it) {
       it.loading = true;
-      const im = new Image(); im.decoding = "async"; im.src = it.p.mid || it.p.thumb;
+      const im = new Image(); im.decoding = "async"; im.src = (lite ? it.p.thumb : it.p.mid) || it.p.thumb;
       im.onload = () => {
         if (!it.loading) return;
         const tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
@@ -736,8 +760,11 @@ void main(){
     function drop(it) { if (it.tex) gl.deleteTexture(it.tex); it.tex = null; it.loading = false; it.shown = 0; }
 
     let lastY = scrollY, vel = 0, running = false, idle = 0;
+    let tick = 0;
     function frame() {
-      const vw = innerWidth, vh = innerHeight, dpr = Math.min(devicePixelRatio || 1, 2);
+      // when nothing is scrolling, phones redraw the drifting cloth at half rate
+      if (lite && ++tick % 2 && scrollY === lastY && Math.abs(vel) < .5) { requestAnimationFrame(frame); return; }
+      const vw = innerWidth, vh = innerHeight, dpr = Math.min(devicePixelRatio || 1, lite ? 1.5 : 2);
       if (cv.width !== Math.round(vw * dpr) || cv.height !== Math.round(vh * dpr)) { cv.width = Math.round(vw * dpr); cv.height = Math.round(vh * dpr); }
       const dy = scrollY - lastY; lastY = scrollY;
       vel += (Math.max(-90, Math.min(90, dy)) - vel) * .12;
