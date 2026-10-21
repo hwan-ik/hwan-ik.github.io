@@ -77,7 +77,10 @@ a { color: inherit; }
   padding: calc(env(safe-area-inset-top, 0px) + 16px) max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px));
 }
 .logo { display: flex; align-items: center; height: 32px; font-size: 18px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; text-decoration: none; white-space: nowrap; }
-.nav-links { display: none; gap: 36px; }
+.nav-links { display: flex; gap: 36px; }
+/* phones use the same Work | HWAN | Contact bar as desktop; the extra menu and grid buttons only repeated the hero links */
+html .menu-btn, html .mobile-menu, html .nav-side .grid-btn { display: none; }
+@media (max-width: 767px) { .nav-links a { display: inline-block; padding: 10px 4px; font-size: 15px; } }
 .nav-links a { font-size: 14px; text-decoration: none; transition: color .2s; }
 .nav-links a:hover { color: #d1d5db; }
 .nav-side { display: flex; align-items: center; gap: 12px; }
