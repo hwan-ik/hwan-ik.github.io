@@ -619,6 +619,36 @@
   "hue": 265.5
  },
  {
+  "id": "dbba899ad8",
+  "src": "photos/dbba899ad8.jpg",
+  "thumb": "photos/dbba899ad8-t.jpg",
+  "mid": "photos/dbba899ad8-m.jpg",
+  "w": 4084,
+  "h": 5446,
+  "tone": "#878f99",
+  "source": "IMG_5590.heic",
+  "kind": "photo",
+  "category": null,
+  "title": "Snow Valley",
+  "blurb": "Jigokudani in Nagano under heavy snow, on the walk up to the monkey park.",
+  "hue": 260.8
+ },
+ {
+  "id": "f096c34a9d",
+  "src": "photos/f096c34a9d.jpg",
+  "thumb": "photos/f096c34a9d-t.jpg",
+  "mid": "photos/f096c34a9d-m.jpg",
+  "w": 3024,
+  "h": 4032,
+  "tone": "#909296",
+  "source": "IMG_5622.HEIC",
+  "kind": "photo",
+  "category": null,
+  "title": "Snow Monkey",
+  "blurb": "A young macaque sitting out the snowfall at the edge of the hot spring.",
+  "hue": 37.8
+ },
+ {
   "id": "ad72b0c50c",
   "src": "photos/ad72b0c50c.jpg",
   "thumb": "photos/ad72b0c50c-t.jpg",
