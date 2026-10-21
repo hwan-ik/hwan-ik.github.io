@@ -432,7 +432,7 @@ html.gated .hero .animate-blur-fade-up { animation-play-state: paused; }
   menu.addEventListener("click", (e) => { if (e.target.closest("a")) setMenu(false); });
 
   let all = [];
-  try { all = await (await fetch("photos.json")).json(); } catch (e) { all = []; }
+  try { all = await (await fetch("photos.json", { cache: "no-cache" })).json(); } catch (e) { all = []; }
   if (!all.length) {
     $("#cats").innerHTML = '<p class="empty">Photographs are on their way.</p>';
     return;
